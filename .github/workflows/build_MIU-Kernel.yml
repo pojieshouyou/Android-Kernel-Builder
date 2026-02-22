@@ -146,10 +146,14 @@ jobs:
           # Compatibility for old kernels missing MODULE_IMPORT_NS.
           if ! grep -RqsE "^[[:space:]]*#define[[:space:]]+MODULE_IMPORT_NS\\(" include/linux include 2>/dev/null; then
             if ! grep -qsE "^[[:space:]]*#define[[:space:]]+MODULE_IMPORT_NS\\(" drivers/kernelsu/ksu.c; then
-              sed -i '1i #ifndef MODULE_IMPORT_NS\
-#define MODULE_IMPORT_NS(ns)\
-#endif\
-' drivers/kernelsu/ksu.c
+              tmp_file="$(mktemp)"
+              {
+                echo "#ifndef MODULE_IMPORT_NS"
+                echo "#define MODULE_IMPORT_NS(ns)"
+                echo "#endif"
+                cat drivers/kernelsu/ksu.c
+              } > "$tmp_file"
+              mv "$tmp_file" drivers/kernelsu/ksu.c
             fi
           fi
 

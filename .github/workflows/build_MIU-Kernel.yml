@@ -147,6 +147,15 @@ jobs:
 
           cat arch/${{ env.arch }}/configs/${{ env.DEFCONFIG_NAME }}
 
+      - name: "🧩 Adjust KernelSU Kconfig when disabled"
+        if: ${{ env.withKernelSU != 'true' }}
+        working-directory: ${{ env.KERNEL_NAME }}
+        run: |
+          if [ ! -d "./drivers/kernelsu" ]; then
+            sed -i '\#drivers/kernelsu/Kconfig#d' ./drivers/Kconfig
+            echo "KernelSU is disabled and drivers/kernelsu is missing; removed source entry from drivers/Kconfig."
+          fi
+
       - name: "👍 Make defconfig"
         working-directory: ${{ env.KERNEL_NAME }}
         env:

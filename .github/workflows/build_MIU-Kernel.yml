@@ -1,6 +1,8 @@
-name: "Build MIUI kernels"
+name: "Build KernelSU_v0.9.5"
 
 on:
+  # schedule:
+  #   - cron: '0 15 * * *'
   workflow_dispatch:
 
 env:
@@ -24,7 +26,7 @@ jobs:
         id: generate-matrix
         run: |
           echo "repos<<EOF" >> $GITHUB_OUTPUT
-          jq -s '[.[][]]' repos*-MIUI.json >> $GITHUB_OUTPUT
+          jq -s '[.[][]]' repos*.json >> $GITHUB_OUTPUT
           echo "EOF" >> $GITHUB_OUTPUT
       - name: "⏰ Set builddate"
         id: generate-builddate
@@ -139,89 +141,7 @@ jobs:
             rm -rf "./drivers/kernelsu"
           fi
 
-          curl -LSs "https://raw.githubusercontent.com/tiann/KernelSU/main/kernel/setup.sh" | bash -s main
-
-          # Kernel 4.9 trees often do not provide MODULE_IMPORT_NS.
-          # Newer KernelSU uses it in ksu.c, so define a no-op fallback when missing.
-          if ! grep -RqsE "^[[:space:]]*#define[[:space:]]+MODULE_IMPORT_NS\\b" include/linux; then
-            if [ -f "./drivers/kernelsu/ksu.c" ] && ! grep -qs "KSU_MODULE_IMPORT_NS_COMPAT" ./drivers/kernelsu/ksu.c; then
-              {
-                printf '%s\n' '#ifndef MODULE_IMPORT_NS' '#define MODULE_IMPORT_NS(ns)' '#endif' '#define KSU_MODULE_IMPORT_NS_COMPAT 1'
-                cat ./drivers/kernelsu/ksu.c
-              } > ./drivers/kernelsu/ksu.c.tmp
-              mv ./drivers/kernelsu/ksu.c.tmp ./drivers/kernelsu/ksu.c
-              echo "Applied KernelSU compatibility patch: define MODULE_IMPORT_NS for old kernel headers."
-            fi
-          fi
-
-          # KernelSU may include <linux/compiler_types.h>, which is absent on older kernels (e.g. 4.9).
-          if [ ! -f "./include/linux/compiler_types.h" ]; then
-            {
-              printf '%s\n' '#ifndef __LINUX_COMPILER_TYPES_H' '#define __LINUX_COMPILER_TYPES_H'
-              printf '%s\n' '#include <linux/compiler.h>'
-              printf '%s\n' '#endif /* __LINUX_COMPILER_TYPES_H */'
-            } > ./include/linux/compiler_types.h
-            echo "Applied KernelSU compatibility patch: added include/linux/compiler_types.h shim."
-          fi
-
-          # Older kernels may not have <linux/sched/signal.h>.
-          if [ ! -f "./include/linux/sched/signal.h" ]; then
-            mkdir -p ./include/linux/sched
-            {
-              printf '%s\n' '#ifndef __LINUX_SCHED_SIGNAL_H' '#define __LINUX_SCHED_SIGNAL_H'
-              printf '%s\n' '#include <linux/sched.h>'
-              printf '%s\n' '#endif /* __LINUX_SCHED_SIGNAL_H */'
-            } > ./include/linux/sched/signal.h
-            echo "Applied KernelSU compatibility patch: added include/linux/sched/signal.h shim."
-          fi
-
-          # Older kernels may not have <linux/sched/task_stack.h>.
-          if [ ! -f "./include/linux/sched/task_stack.h" ]; then
-            mkdir -p ./include/linux/sched
-            {
-              printf '%s\n' '#ifndef __LINUX_SCHED_TASK_STACK_H' '#define __LINUX_SCHED_TASK_STACK_H'
-              printf '%s\n' '#include <linux/sched.h>'
-              printf '%s\n' '#endif /* __LINUX_SCHED_TASK_STACK_H */'
-            } > ./include/linux/sched/task_stack.h
-            echo "Applied KernelSU compatibility patch: added include/linux/sched/task_stack.h shim."
-          fi
-
-          # Older kernels may not have <linux/pgtable.h>.
-          if [ ! -f "./include/linux/pgtable.h" ]; then
-            {
-              printf '%s\n' '#ifndef __LINUX_PGTABLE_H' '#define __LINUX_PGTABLE_H'
-              printf '%s\n' '#include <asm/pgtable.h>'
-              printf '%s\n' '#endif /* __LINUX_PGTABLE_H */'
-            } > ./include/linux/pgtable.h
-            echo "Applied KernelSU compatibility patch: added include/linux/pgtable.h shim."
-          fi
-
-          # Older kernels have stricter/older APIs used by newer KernelSU allowlist.c.
-          if [ -f "./drivers/kernelsu/allowlist.c" ]; then
-            sed -i 's/kernel_write(fp, &magic,/kernel_write(fp, (const char *)\&magic,/' ./drivers/kernelsu/allowlist.c
-            sed -i 's/kernel_write(fp, &version,/kernel_write(fp, (const char *)\&version,/' ./drivers/kernelsu/allowlist.c
-            sed -i 's/kernel_write(fp, &p->profile,/kernel_write(fp, (const char *)\&p->profile,/' ./drivers/kernelsu/allowlist.c
-
-            if grep -qs "TWA_RESUME" ./drivers/kernelsu/allowlist.c && ! grep -Rqs "TWA_RESUME" include/linux; then
-              {
-                printf '%s\n' '#ifndef TWA_RESUME' '#define TWA_RESUME 0' '#endif'
-                cat ./drivers/kernelsu/allowlist.c
-              } > ./drivers/kernelsu/allowlist.c.tmp
-              mv ./drivers/kernelsu/allowlist.c.tmp ./drivers/kernelsu/allowlist.c
-            fi
-
-            echo "Applied KernelSU compatibility patch: adjusted allowlist.c for legacy kernel APIs."
-          fi
-
-          # Some older kernels do not have seccomp.filter_count.
-          if [ -f "./drivers/kernelsu/app_profile.c" ]; then
-            sed -i 's/atomic_set(&current->seccomp.filter_count, 0);/(void)0;/g' ./drivers/kernelsu/app_profile.c
-          fi
-
-          # Older kernels may not provide strncpy_from_user_nofault.
-          if [ -f "./drivers/kernelsu/sucompat.c" ]; then
-            sed -i 's/strncpy_from_user_nofault(/strncpy_from_user(/g' ./drivers/kernelsu/sucompat.c
-          fi
+          curl -LSs "https://raw.githubusercontent.com/tiann/KernelSU/v0.9.5/kernel/setup.sh" | bash -s main
 
           echo -e "CONFIG_KPROBES=y" >> arch/${{ env.arch }}/configs/${{ env.DEFCONFIG_NAME }}
           echo -e "CONFIG_HAVE_KPROBES=y" >> arch/${{ env.arch }}/configs/${{ env.DEFCONFIG_NAME }}
@@ -247,7 +167,7 @@ jobs:
           make ${args}
 
       - name: "💛 Upload Image"
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v3
         env:
           arch: ${{ steps.generate-args.outputs.ARCH }}
         with:
@@ -257,7 +177,7 @@ jobs:
           retention-days: 7
 
       - name: "💙 Upload Image.gz"
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v3
         env:
           arch: ${{ steps.generate-args.outputs.ARCH }}
         with:
@@ -267,7 +187,7 @@ jobs:
           retention-days: 7
 
       - name: "💜 Upload dtb"
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v3
         env:
           arch: ${{ steps.generate-args.outputs.ARCH }}
         with:
@@ -277,7 +197,7 @@ jobs:
           retention-days: 7
 
       - name: "❤️ Upload dtbo.img"
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v3
         env:
           arch: ${{ steps.generate-args.outputs.ARCH }}
         with:
@@ -302,7 +222,7 @@ jobs:
           zip -q -r "${{ env.anykernel }}.zip" *
 
       - name: "💾 Upload AnyKernel3 image => (${{ env.builddate }})"
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v3
         if: ${{ env.useAnykernel == 'true' }}
         with:
           name: "${{ env.KERNEL_DEVICE }}-${{ env.KERNEL_NAME }}_${{ env.builddate }}"
@@ -313,6 +233,6 @@ jobs:
         uses: softprops/action-gh-release@v1
         if: ${{ env.useAnykernel == 'true' && env.release == 'true' }}
         with:
-          tag_name: MIUI_Kernel_v${{ env.builddate }}.${{ github.run_number }}
+          tag_name: KernelSU_v0.9.5-for-MIUI&NGK_Kernel_v${{ env.builddate }}.${{ github.run_number }}
           files: "${{ env.WORKSPACE }}/${{ env.KERNEL_DEVICE }}-${{ env.KERNEL_NAME }}_${{ env.builddate }}.zip"
           generate_release_notes: true

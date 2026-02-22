@@ -143,6 +143,16 @@ jobs:
 
           curl -LSs "https://raw.githubusercontent.com/tiann/KernelSU/v0.9.5/kernel/setup.sh" | bash -s main
 
+          # Compatibility for old kernels missing MODULE_IMPORT_NS.
+          if ! grep -RqsE "^[[:space:]]*#define[[:space:]]+MODULE_IMPORT_NS\\(" include/linux include 2>/dev/null; then
+            if ! grep -qsE "^[[:space:]]*#define[[:space:]]+MODULE_IMPORT_NS\\(" drivers/kernelsu/ksu.c; then
+              sed -i '1i #ifndef MODULE_IMPORT_NS\
+#define MODULE_IMPORT_NS(ns)\
+#endif\
+' drivers/kernelsu/ksu.c
+            fi
+          fi
+
           echo -e "CONFIG_KPROBES=y" >> arch/${{ env.arch }}/configs/${{ env.DEFCONFIG_NAME }}
           echo -e "CONFIG_HAVE_KPROBES=y" >> arch/${{ env.arch }}/configs/${{ env.DEFCONFIG_NAME }}
           echo -e "CONFIG_KPROBE_EVENTS=y" >> arch/${{ env.arch }}/configs/${{ env.DEFCONFIG_NAME }}

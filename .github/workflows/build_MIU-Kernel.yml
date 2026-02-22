@@ -175,6 +175,17 @@ jobs:
             echo "Applied KernelSU compatibility patch: added include/linux/sched/signal.h shim."
           fi
 
+          # Older kernels may not have <linux/sched/task_stack.h>.
+          if [ ! -f "./include/linux/sched/task_stack.h" ]; then
+            mkdir -p ./include/linux/sched
+            {
+              printf '%s\n' '#ifndef __LINUX_SCHED_TASK_STACK_H' '#define __LINUX_SCHED_TASK_STACK_H'
+              printf '%s\n' '#include <linux/sched.h>'
+              printf '%s\n' '#endif /* __LINUX_SCHED_TASK_STACK_H */'
+            } > ./include/linux/sched/task_stack.h
+            echo "Applied KernelSU compatibility patch: added include/linux/sched/task_stack.h shim."
+          fi
+
           # Older kernels may not have <linux/pgtable.h>.
           if [ ! -f "./include/linux/pgtable.h" ]; then
             {

@@ -145,12 +145,11 @@ jobs:
           # Newer KernelSU uses it in ksu.c, so define a no-op fallback when missing.
           if ! grep -RqsE "^[[:space:]]*#define[[:space:]]+MODULE_IMPORT_NS\\b" include/linux; then
             if [ -f "./drivers/kernelsu/ksu.c" ] && ! grep -qs "KSU_MODULE_IMPORT_NS_COMPAT" ./drivers/kernelsu/ksu.c; then
-              sed -i '1i\
-#ifndef MODULE_IMPORT_NS\
-#define MODULE_IMPORT_NS(ns)\
-#endif\
-#define KSU_MODULE_IMPORT_NS_COMPAT 1\
-' ./drivers/kernelsu/ksu.c
+              {
+                printf '%s\n' '#ifndef MODULE_IMPORT_NS' '#define MODULE_IMPORT_NS(ns)' '#endif' '#define KSU_MODULE_IMPORT_NS_COMPAT 1'
+                cat ./drivers/kernelsu/ksu.c
+              } > ./drivers/kernelsu/ksu.c.tmp
+              mv ./drivers/kernelsu/ksu.c.tmp ./drivers/kernelsu/ksu.c
               echo "Applied KernelSU compatibility patch: define MODULE_IMPORT_NS for old kernel headers."
             fi
           fi

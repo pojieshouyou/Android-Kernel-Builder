@@ -145,12 +145,12 @@ jobs:
 
           # Compatibility for old kernels missing linux/compiler_types.h.
           if [ ! -f include/linux/compiler_types.h ]; then
-            cat > include/linux/compiler_types.h <<'EOF'
-#ifndef _LINUX_COMPILER_TYPES_H
-#define _LINUX_COMPILER_TYPES_H
-#include <linux/compiler.h>
-#endif
-EOF
+            printf '%s\n' \
+              '#ifndef _LINUX_COMPILER_TYPES_H' \
+              '#define _LINUX_COMPILER_TYPES_H' \
+              '#include <linux/compiler.h>' \
+              '#endif' \
+              > include/linux/compiler_types.h
           fi
 
           # Compatibility for old kernels missing MODULE_IMPORT_NS.

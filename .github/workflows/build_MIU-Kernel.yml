@@ -154,6 +154,16 @@ jobs:
             fi
           fi
 
+          # KernelSU may include <linux/compiler_types.h>, which is absent on older kernels (e.g. 4.9).
+          if [ ! -f "./include/linux/compiler_types.h" ]; then
+            {
+              printf '%s\n' '#ifndef __LINUX_COMPILER_TYPES_H' '#define __LINUX_COMPILER_TYPES_H'
+              printf '%s\n' '#include <linux/compiler.h>'
+              printf '%s\n' '#endif /* __LINUX_COMPILER_TYPES_H */'
+            } > ./include/linux/compiler_types.h
+            echo "Applied KernelSU compatibility patch: added include/linux/compiler_types.h shim."
+          fi
+
           echo -e "CONFIG_KPROBES=y" >> arch/${{ env.arch }}/configs/${{ env.DEFCONFIG_NAME }}
           echo -e "CONFIG_HAVE_KPROBES=y" >> arch/${{ env.arch }}/configs/${{ env.DEFCONFIG_NAME }}
           echo -e "CONFIG_KPROBE_EVENTS=y" >> arch/${{ env.arch }}/configs/${{ env.DEFCONFIG_NAME }}

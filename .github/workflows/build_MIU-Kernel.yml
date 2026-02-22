@@ -164,6 +164,23 @@ jobs:
             echo "Applied KernelSU compatibility patch: added include/linux/compiler_types.h shim."
           fi
 
+          # Older kernels have stricter/older APIs used by newer KernelSU allowlist.c.
+          if [ -f "./drivers/kernelsu/allowlist.c" ]; then
+            sed -i 's/kernel_write(fp, &magic,/kernel_write(fp, (const char *)&magic,/' ./drivers/kernelsu/allowlist.c
+            sed -i 's/kernel_write(fp, &version,/kernel_write(fp, (const char *)&version,/' ./drivers/kernelsu/allowlist.c
+            sed -i 's/kernel_write(fp, &p->profile,/kernel_write(fp, (const char *)&p->profile,/' ./drivers/kernelsu/allowlist.c
+
+            if grep -qs "TWA_RESUME" ./drivers/kernelsu/allowlist.c && ! grep -Rqs "TWA_RESUME" include/linux; then
+              {
+                printf '%s\n' '#ifndef TWA_RESUME' '#define TWA_RESUME 0' '#endif'
+                cat ./drivers/kernelsu/allowlist.c
+              } > ./drivers/kernelsu/allowlist.c.tmp
+              mv ./drivers/kernelsu/allowlist.c.tmp ./drivers/kernelsu/allowlist.c
+            fi
+
+            echo "Applied KernelSU compatibility patch: adjusted allowlist.c for legacy kernel APIs."
+          fi
+
           echo -e "CONFIG_KPROBES=y" >> arch/${{ env.arch }}/configs/${{ env.DEFCONFIG_NAME }}
           echo -e "CONFIG_HAVE_KPROBES=y" >> arch/${{ env.arch }}/configs/${{ env.DEFCONFIG_NAME }}
           echo -e "CONFIG_KPROBE_EVENTS=y" >> arch/${{ env.arch }}/configs/${{ env.DEFCONFIG_NAME }}

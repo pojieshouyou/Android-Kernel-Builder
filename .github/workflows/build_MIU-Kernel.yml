@@ -175,6 +175,16 @@ jobs:
             echo "Applied KernelSU compatibility patch: added include/linux/sched/signal.h shim."
           fi
 
+          # Older kernels may not have <linux/pgtable.h>.
+          if [ ! -f "./include/linux/pgtable.h" ]; then
+            {
+              printf '%s\n' '#ifndef __LINUX_PGTABLE_H' '#define __LINUX_PGTABLE_H'
+              printf '%s\n' '#include <asm/pgtable.h>'
+              printf '%s\n' '#endif /* __LINUX_PGTABLE_H */'
+            } > ./include/linux/pgtable.h
+            echo "Applied KernelSU compatibility patch: added include/linux/pgtable.h shim."
+          fi
+
           # Older kernels have stricter/older APIs used by newer KernelSU allowlist.c.
           if [ -f "./drivers/kernelsu/allowlist.c" ]; then
             sed -i 's/kernel_write(fp, &magic,/kernel_write(fp, (const char *)\&magic,/' ./drivers/kernelsu/allowlist.c

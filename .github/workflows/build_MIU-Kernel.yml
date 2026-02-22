@@ -141,7 +141,17 @@ jobs:
             rm -rf "./drivers/kernelsu"
           fi
 
-          curl -LSs "https://raw.githubusercontent.com/tiann/KernelSU/v0.9.5/kernel/setup.sh" | bash -s main
+          curl -LSs "https://raw.githubusercontent.com/tiann/KernelSU/v0.9.5/kernel/setup.sh" | bash -s v0.9.5
+
+          # Compatibility for old kernels missing linux/compiler_types.h.
+          if [ ! -f include/linux/compiler_types.h ]; then
+            cat > include/linux/compiler_types.h <<'EOF'
+#ifndef _LINUX_COMPILER_TYPES_H
+#define _LINUX_COMPILER_TYPES_H
+#include <linux/compiler.h>
+#endif
+EOF
+          fi
 
           # Compatibility for old kernels missing MODULE_IMPORT_NS.
           if ! grep -RqsE "^[[:space:]]*#define[[:space:]]+MODULE_IMPORT_NS\\(" include/linux include 2>/dev/null; then

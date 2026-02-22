@@ -192,6 +192,11 @@ jobs:
             echo "Applied KernelSU compatibility patch: adjusted allowlist.c for legacy kernel APIs."
           fi
 
+          # Some older kernels do not have seccomp.filter_count.
+          if [ -f "./drivers/kernelsu/app_profile.c" ]; then
+            sed -i 's/atomic_set(&current->seccomp.filter_count, 0);/\\/\\* compat: old kernel seccomp has no filter_count \\*\\//g' ./drivers/kernelsu/app_profile.c
+          fi
+
           echo -e "CONFIG_KPROBES=y" >> arch/${{ env.arch }}/configs/${{ env.DEFCONFIG_NAME }}
           echo -e "CONFIG_HAVE_KPROBES=y" >> arch/${{ env.arch }}/configs/${{ env.DEFCONFIG_NAME }}
           echo -e "CONFIG_KPROBE_EVENTS=y" >> arch/${{ env.arch }}/configs/${{ env.DEFCONFIG_NAME }}
